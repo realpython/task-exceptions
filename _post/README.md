@@ -22,8 +22,33 @@ By the end of this tutorial, you will be able to:
 
 A python exception is an error that occurs when executing a program, causing the program to stop. If you think that your program might raise an exception when executed, you might find it useful to use exceptions to handle the errors.
 
-TODO what do you mean by "raise"? Someone may be just reading about exceptions for the first time. Don't assume they know what "raise" means.
-TODO add simple example of handling an exception
+###Example
+In the example below, we prompt the user to enter a number.The program will only work if you enter a number as input.
+
+```sh
+y = int(input("Please enter a number: "))
+print('%s squared  is  %s' % (y, y**2))
+
+```
+Lets see what happens when the user puts an input like a string "four"
+
+```sh
+Please enter a number:  g
+Traceback (most recent call last):
+  File "python", line 1, in <module>
+ValueError: invalid literal for int() with base 10: 'g'
+```
+As seen above the program throws a ```ValueError```
+Here is how we handle the error using an exception.
+
+```sh
+try:
+  y = int(raw_input("Please enter a number: "))
+  print('%s squared  is  %s' % (y, y**2))
+
+except ValueError:
+    print "Enter numbers only"   
+```
 
 ## Flask API Example
 
@@ -59,9 +84,9 @@ Create the following files and folders:
 
 ```sh
 ├── app
-│   ├── __init__.py
+│   ├── __init__.py
 │   ├── errors.py
-│   └── models.py
+│   └── models.py
 ├── requirements.txt
 └── run.py
 ```
@@ -159,12 +184,12 @@ Also, the database - *tasks.db* - should have been created in the "app" director
 
 sqlite> .schema
 CREATE TABLE task (
-	id INTEGER NOT NULL,
-	task_name VARCHAR(80),
-	date_created DATETIME,
-	date_modified DATETIME,
-	PRIMARY KEY (id),
-	UNIQUE (task_name)
+    id INTEGER NOT NULL,
+    task_name VARCHAR(80),
+    date_created DATETIME,
+    date_modified DATETIME,
+    PRIMARY KEY (id),
+    UNIQUE (task_name)
 );
 sqlite>
 ```
@@ -181,19 +206,18 @@ As mentioned in the beginning of the tutorial, we want to be able to add, delete
 In the *run.py*, add the following view:
 
 ```python
-@app.route('/tasks', methods=['GET', 'POST'])
+@app.route('/tasks/', methods=['POST', 'GET'])
 def index():
-    if request.method == 'GET':
+    if request.method == "GET":
         tasks = Task.query.all()
         results = []
-        for task in tasks:
-            res = {
-                'id': task.id,
-                'task_name': task.task_name,
-                'date_created': task.date_created,
-                'date_modified': task.date_modified
-            }
-            results.append(res)
+
+        [results.append({'id': task.id,
+                         'task_name': task.task_name,
+                         'date_created': task.date_created,
+                         'date_modified': task.date_modified}) for task in tasks]
+    
+
         return results, status.HTTP_201_CREATED
     elif request.method == 'POST':
         task_name = request.data['task_name']
@@ -210,7 +234,7 @@ def index():
             return response, status.HTTP_201_CREATED
 ```
 
-TODO refactor for loops to list comps
+
 
 Add the following imports as well:
 
@@ -233,19 +257,18 @@ db = SQLAlchemy(app)
 
 from app.models import Task
 
-@app.route('/tasks', methods=['GET', 'POST'])
+@app.route('/tasks/', methods=['POST', 'GET'])
 def index():
-    if request.method == 'GET':
+    if request.method == "GET":
         tasks = Task.query.all()
         results = []
-        for task in tasks:
-            res = {
-                'id': task.id,
-                'task_name': task.task_name,
-                'date_created': task.date_created,
-                'date_modified': task.date_modified
-            }
-            results.append(res)
+
+        [results.append({'id': task.id,
+                         'task_name': task.task_name,
+                         'date_created': task.date_created,
+                         'date_modified': task.date_modified}) for task in tasks]
+    
+
         return results, status.HTTP_201_CREATED
     elif request.method == 'POST':
         task_name = request.data['task_name']
@@ -286,11 +309,32 @@ Refresh the page, and you should see a list of all the tasks:
 
 <br>
 
+Alternatively you can use curl
+
+####All Tasks
+
+```sh
+curl http://127.0.0.1:5000/
+```
+
+####Add Task
+```sh
+curl -H "Content-type: application/json" -X POST http://127.0.0.1:5000/tasks/ -d '{"task_name":"SHOPPING"}'
+```
+####Delete Task
+```sh
+curl -H "Content-type: application/json" -X dELETE http://127.0.0.1:5000/tasks/3/
+```
+
+
+
 Now, try to do a `POST` request with no data. You should see a `Bad Request` error, which you do not want your end users to see and is exactly why want to handle exceptions in your code.
 
 ## Handling Exceptions
+Sometimes, we might need to have our own custom exceptions as opposed to having  the built-in abort() function. This is essential to inform the user what went wrong in a more descriptive manner.
+The exception will include a status_code and a descriptive message.
 
-We need to raise an exception so that the user knows what went wrong.
+
 Let's write an exception if no data is passed in to a `POST` request.
 
 Update *errors.py* like so:
@@ -300,11 +344,10 @@ from flask_api.exceptions import APIException
 
 
 class InvalidParameter(APIException):
-    status_code = 404
+    status_code = 204
     detail = 'Invalid parameters'
 ```
 
-TODO this should not be a 404. This may be a good time to talk about throwing proper status codes.
 
 Flask API has an [APIException](http://www.flaskapi.org/api-guide/exceptions/) class which we have inherited to create our custom Exception. Let's include the exception in our `index` view:
 
@@ -412,9 +455,6 @@ AttributeError: 'NoneType' object has no attribute 'id'
 
 We need to take care of this error by raising a `NotFound` exception when a task does not exist. Luckily, we don't need to create a custom exception because the [NotFound](http://www.flaskapi.org/api-guide/exceptions/) is built in to Flask API.
 
-TODO this is also built in to Flask. This could be a perfect point to show how to use the native Flask exceptions.
-TODO what if I did want to customize this exception? How would I go about doing that?
-
 Update the view:
 
 ```python
@@ -445,6 +485,7 @@ Don't forget the import:
 from flask_api import FlaskAPI, status, exceptions
 ```
 
+
 So, if the task does not exist, we raise a `NotFound()` exception to handle the error. This time, when you navigate to [http://localhost:5000/tasks/987654322](http://localhost:5000/tasks/987654322), you should see the following response:
 
 ```python
@@ -456,6 +497,93 @@ Content-Type: application/json
 }
 ```
 
+NOTE:
+In production, its impotant to show error messages that the user can understand, so for the above exception, we can have own own which is more descriptive. i.e 
+
+```sh
+class TaskNotFound(APIException):
+    status_code = 404
+    detail = 'This task does not exist'
+
+```
+
 ![tasks app - delete](images/tasks_delete_not_found.png)
 
 <br>
+Since the task name is a unique field,the database will raise an error if two identical tasks are entered, we also need to take care of that.
+In the adding task view, update it to look like this:
+
+```sh
+
+@app.route('/tasks/', methods=['POST', 'GET'])
+def index():
+    if request.method == "GET":
+        ..........
+    elif request.method == "POST":
+        task_name = str(request.data.get('task_name', ''))
+
+        try:
+            if task_name:
+                new_task = Task(task_name=task_name)
+                db.session.add(new_task)
+                db.session.commit()
+                response = {
+                    'id': new_task.id,
+                    'task_name': new_task.task_name,
+                    'date_created': new_task.date_created,
+                    'date_modified': new_task.date_modified
+
+                return response
+            raise InvalidParameter
+        except IntegrityError:
+            return {"success": "This task already exists"}
+```
+Dont forget the import
+```sh
+from sqlalchemy.exc import IntegrityError
+```
+What if we enter a page that does not exist  - http://localhost:5000/tasks/doesnotexist?, we will get this error in the browser.
+
+```sh
+Not Found
+
+The requested URL was not found on the server. If you entered the URL manually please check your spelling and try again.
+```
+We need to take care of this error by having a custom page.
+Create a templates folder in the ```app ``` directory and add an html file with the following contents.
+```sh
+#app/templates/404.html
+{% block title %}Page Not Found{% endblock %}
+{% block body %}
+  <h1>Page Not Found</h1>
+  <p>What you were looking for is not there.
+  <p><a href="{{ url_for('index') }}">HOME</a>
+{% endblock %}
+```
+In *run.py* add a view for displaying the page.
+
+```sh
+
+@app.errorhandler(404)
+def page_not_found(e):
+    return render_template('404.html'), 404
+
+```
+##LOGGING
+Logging is important so as to  really understand what is happening during executions of the program. Luckily, python comes with an inbuilt library  called logging, which is useful for logging your program’s execution to a file.
+Let's set up logging in our Code.
+
+```sh
+if __name__ == "__main__":
+    db.create_all()
+    import logging
+    logging.basicConfig(filename='error.log', level=logging.INFO,
+                        FORMAT='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+
+    app.run()
+
+```
+
+
+##CONCLUSION
+I hope this tutorial has helped you understand exception handling in Flask. Properly handling exceptions is very  very helpful especially i production because a user may abandon your app if errors are not properly handled.. If you have any questions related to exceptions, please let me know in the comments.
