@@ -4,7 +4,7 @@ This tutorial will teach you how to handle exceptions in Flask. We will build a 
 
 Dependencies:
 
-- Python v3.6.2
+- Python v3.6.3
 - Flask v0.12.2
 - Flask-SQLAlchemy v2.3.2
 - Flask API v1.0
@@ -22,12 +22,43 @@ By the end of this tutorial, you will be able to:
 
 A python exception is an error that occurs when executing a program, causing the program to stop. If you think that your program might raise an exception when executed, you might find it useful to use exceptions to handle the errors.
 
-TODO what do you mean by "raise"? Someone may be just reading about exceptions for the first time. Don't assume they know what "raise" means.
-TODO add simple example of handling an exception
+## Example
+
+In the example below, we prompt the user to enter a number. The program will *only* work if you enter a number as input.
+
+```python
+while True:
+  y = int(input('Please enter a number: '))
+  print(f'{y} squared is {y**2}')
+```
+
+Let's see what happens when the user input a string:
+
+```sh
+Please enter a number: four
+Traceback (most recent call last):
+  File "<stdin>", line 2, in <module>
+ValueError: invalid literal for int() with base 10: 'four'
+```
+
+When you enter a string, or any other character that is not an integer, the program will throw a `ValueError` exception.
+
+To handle the error, we can add a `try/except`:
+
+```python
+while True:
+  try:
+    y = int(input('Please enter a number: '))
+    print(f'{y} squared is {y**2}')
+  except ValueError:
+      print('Enter numbers only')
+```
+
+Now, the code inside the `try` statement is executed first. If the user enters an integer, the `except` statement is skipped. On the other hand, if the user enters a string, the code within the `except` statement is executed.
 
 ## Flask API Example
 
-To speed up development, we'll use [Flask API](http://www.flaskapi.org/), which is an implementation of the same web browsable APIs that [Django REST framework](http://www.django-rest-framework.org/) provides. It'll help us implement our own browsable API.
+To speed up development, we'll use [Flask API](http://www.flaskapi.org/), which is an implementation of the same web browsable API that [Django REST framework](http://www.django-rest-framework.org/) provides. It'll help us implement our own browsable API.
 
 We will develop an API for Tasks, where users will be able to:
 
@@ -59,9 +90,9 @@ Create the following files and folders:
 
 ```sh
 ├── app
-│   ├── __init__.py
+│   ├── __init__.py
 │   ├── errors.py
-│   └── models.py
+│   └── models.py
 ├── requirements.txt
 └── run.py
 ```
@@ -111,6 +142,14 @@ class Task(db.Model):
 
     def __repr__(self):
         return f'<Task {self.task_name}>'
+
+    def to_json(self):
+        return {
+            'id': self.id,
+            'task_name': self.task_name,
+            'date_created': self.date_created,
+            'date_modified': self.date_modified
+        }
 ```
 
 ### Run
@@ -185,15 +224,7 @@ In the *run.py*, add the following view:
 def index():
     if request.method == 'GET':
         tasks = Task.query.all()
-        results = []
-        for task in tasks:
-            res = {
-                'id': task.id,
-                'task_name': task.task_name,
-                'date_created': task.date_created,
-                'date_modified': task.date_modified
-            }
-            results.append(res)
+        results = [t.to_json() for t in tasks]
         return results, status.HTTP_201_CREATED
     elif request.method == 'POST':
         task_name = request.data['task_name']
@@ -201,16 +232,11 @@ def index():
             new_task = Task(task_name=task_name)
             db.session.add(new_task)
             db.session.commit()
-            response = {
-                'id': new_task.id,
-                'task_name': new_task.task_name,
-                'date_created': new_task.date_created,
-                'date_modified': new_task.date_modified
-            }
+            response = new_task.to_json()
             return response, status.HTTP_201_CREATED
 ```
 
-TODO refactor for loops to list comps
+
 
 Add the following imports as well:
 
@@ -237,15 +263,7 @@ from app.models import Task
 def index():
     if request.method == 'GET':
         tasks = Task.query.all()
-        results = []
-        for task in tasks:
-            res = {
-                'id': task.id,
-                'task_name': task.task_name,
-                'date_created': task.date_created,
-                'date_modified': task.date_modified
-            }
-            results.append(res)
+        results = [t.to_json() for t in tasks]
         return results, status.HTTP_201_CREATED
     elif request.method == 'POST':
         task_name = request.data['task_name']
@@ -253,12 +271,7 @@ def index():
             new_task = Task(task_name=task_name)
             db.session.add(new_task)
             db.session.commit()
-            response = {
-                'id': new_task.id,
-                'task_name': new_task.task_name,
-                'date_created': new_task.date_created,
-                'date_modified': new_task.date_modified
-            }
+            response = new_task.to_json()
             return response, status.HTTP_201_CREATED
 ```
 
@@ -286,11 +299,32 @@ Refresh the page, and you should see a list of all the tasks:
 
 <br>
 
+Alternatively, you can use cURL to view all tasks:
+
+```sh
+$ curl http://127.0.0.1:5000/tasks
+```
+
+And to add a task:
+
+```sh
+$ curl -H "Content-type: application/json" \
+  -X POST http://127.0.0.1:5000/tasks \
+  -d '{"task_name":"go shopping"}'
+```
+
 Now, try to do a `POST` request with no data. You should see a `Bad Request` error, which you do not want your end users to see and is exactly why want to handle exceptions in your code.
 
 ## Handling Exceptions
 
-We need to raise an exception so that the user knows what went wrong.
+It's worth noting that you can use an built-in `abort()` method to handle errors:
+
+```python
+ADD example of using abort to handle exceptions
+```
+
+This is fine, but  you may need to write your own custom exceptions to inform the user what went wrong in a more descriptive manner. In our case, for example, we will include a status code along with a descriptive message.
+
 Let's write an exception if no data is passed in to a `POST` request.
 
 Update *errors.py* like so:
@@ -300,11 +334,9 @@ from flask_api.exceptions import APIException
 
 
 class InvalidParameter(APIException):
-    status_code = 404
+    status_code = 204
     detail = 'Invalid parameters'
 ```
-
-TODO this should not be a 404. This may be a good time to talk about throwing proper status codes.
 
 Flask API has an [APIException](http://www.flaskapi.org/api-guide/exceptions/) class which we have inherited to create our custom Exception. Let's include the exception in our `index` view:
 
@@ -312,7 +344,9 @@ Flask API has an [APIException](http://www.flaskapi.org/api-guide/exceptions/) c
 @app.route('/tasks', methods=['GET', 'POST'])
 def index():
     if request.method == 'GET':
-      ...
+        tasks = Task.query.all()
+        results = [t.to_json() for t in tasks]
+        return results, status.HTTP_201_CREATED
     elif request.method == 'POST':
         if 'task_name' in request.data:
             task_name = request.data['task_name']
@@ -320,12 +354,7 @@ def index():
                 new_task = Task(task_name=task_name)
                 db.session.add(new_task)
                 db.session.commit()
-                response = {
-                    'id': new_task.id,
-                    'task_name': new_task.task_name,
-                    'date_created': new_task.date_created,
-                    'date_modified': new_task.date_modified
-                }
+                response = new_task.to_json()
                 return response, status.HTTP_201_CREATED
         raise InvalidParameter
 ```
@@ -353,7 +382,16 @@ Content-Type: application/json
 
 As you can see, it's now easier (and prettier) to know what went wrong by letting an exception do the explaining for us.
 
-Now let's write the second view for deleting a task.
+Try with cURL:
+
+```sh
+curl -H "Content-type: application/json" \
+  -X POST http://127.0.0.1:5000/tasks \
+  -d '{}'
+{"message": "Invalid parameters"}
+```
+
+Now, let's write the second view for deleting a task.
 
 ## View - single task
 
@@ -364,12 +402,7 @@ In the *\_\_init\_\_.py*, add the following view below the existing view:
 def manage_tasks(id):
     task = Task.query.filter_by(id=id).first()
     if request.method == 'GET':
-        response = {
-            'id': task.id,
-            'name': task.task_name,
-            'date_created': task.date_created,
-            'date_modified': task.date_modified
-        }
+        response = task.to_json()
         return response
     elif request.method == 'DELETE':
         db.session.delete(task)
@@ -412,9 +445,6 @@ AttributeError: 'NoneType' object has no attribute 'id'
 
 We need to take care of this error by raising a `NotFound` exception when a task does not exist. Luckily, we don't need to create a custom exception because the [NotFound](http://www.flaskapi.org/api-guide/exceptions/) is built in to Flask API.
 
-TODO this is also built in to Flask. This could be a perfect point to show how to use the native Flask exceptions.
-TODO what if I did want to customize this exception? How would I go about doing that?
-
 Update the view:
 
 ```python
@@ -424,12 +454,7 @@ def manage_tasks(id):
     if not task:
         raise exceptions.NotFound()
     if request.method == 'GET':
-        response = {
-            'id': task.id,
-            'name': task.task_name,
-            'date_created': task.date_created,
-            'date_modified': task.date_modified
-        }
+        response = task.to_json()
         return response
     elif request.method == 'DELETE':
         db.session.delete(task)
@@ -456,6 +481,125 @@ Content-Type: application/json
 }
 ```
 
+In production, its important to show error messages that the user can understand. So, let's make the above exception our own:
+
+```python
+class TaskNotFound(APIException):
+    status_code = 404
+    detail = 'This task does not exist'
+```
+
+> **NOTE:** In dev mode, you generally want to show more of the exception so that the developer can get the information needed to fix the issue; but in production, you just want to expose enough (and log the rest) so that the end user doesn't exit the site.
+
+Add the exception to *errors.py*. Then, add the import to *\_\_init\_\_.py*:
+
+```python
+from app.errors import InvalidParameter, TaskNotFound
+```
+
 ![tasks app - delete](images/tasks_delete_not_found.png)
 
 <br>
+
+Since the task name is a unique field, the database will raise an error if two identical tasks are entered. We also need to handle that.
+
+In the adding task view, update it to look like this:
+
+```python
+@app.route('/tasks', methods=['GET', 'POST'])
+def index():
+    if request.method == 'GET':
+        tasks = Task.query.all()
+        results = [t.to_json() for t in tasks]
+        return results, status.HTTP_201_CREATED
+    elif request.method == 'POST':
+        if 'task_name' in request.data:
+            task_name = request.data['task_name']
+            try:
+                if task_name:
+                    new_task = Task(task_name=task_name)
+                    db.session.add(new_task)
+                    db.session.commit()
+                    response = new_task.to_json()
+                    return response, status.HTTP_201_CREATED
+            except IntegrityError:
+                return {'error': 'This task already exists'}
+        raise InvalidParameter
+```
+
+Add the import:
+
+```python
+from sqlalchemy.exc import IntegrityError
+```
+
+What if we enter a page that does not exist  - http://localhost:5000/tasks/doesnotexist?" You will see this error in the browser:
+
+```
+Not Found
+
+The requested URL was not found on the server. If you entered the URL manually please check your spelling and try again.
+```
+
+We need to take care of this error by adding a custom page.
+
+Create a "templates" folder in the "app" directory, and then add an new file called *404.html* with the following contents:
+
+```html
+{% block body %}
+  <h1>Page Not Found</h1>
+  <p>What you were looking for is not there.
+  <p><a href="{{ url_for('index') }}">HOME</a>
+{% endblock %}
+
+```
+
+Add a view for displaying the 404 page to *\_\_init\_\_.py*:
+
+```python
+@app.errorhandler(404)
+def page_not_found(e):
+    return render_template('404.html'), 404
+```
+
+Add the import:
+
+```python
+from flask import request, render_template
+```
+
+Test!
+
+## Logging Exceptions
+
+Logging is important for developers to truly understand what is happening during executions of the program. Luckily, Python comes with an built-in [logging](https://docs.python.org/3/library/logging.html), which we'll use to log our program's execution to a file.
+
+Update *run.py*
+
+```python
+import logging
+
+from flask import jsonify, request
+from flask_api import status, exceptions
+
+from app import app, db
+from app.models import Task
+
+
+if __name__ == '__main__':
+    db.create_all()
+    logging.basicConfig(
+        filename='error.log',
+        level=logging.INFO,
+        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    )
+    app.run(debug=True)
+```
+
+Now, when you run the app, you should see the log file file up.
+
+## Conclusion
+
+I hope this tutorial has helped you understand exception handling in Flask. Properly handling exceptions is very, very helpful especially in production because a user may abandon your app if errors are not properly handled.
+
+If you have any questions related to exceptions, please let me know in the comments.
