@@ -603,7 +603,7 @@ def manage_tasks(id):
 ```
 
 ### Aborting
-Using the abort() function is simplest way to handle exceptions in Flask. This type works by just raising an exception by the error code without importing the exception.
+Using the abort() function is the simplest way to handle exceptions in Flask. This type works by just raising an exception by the error code without importing the exception.
 
 Let's write an abort() exception if a task does not exist.
 
@@ -623,7 +623,7 @@ def manage_tasks(id):
 
 ```
 
-##LOGGING
+## LOGGING
 Logging is important so as to  really understand what is happening during executions of the program. Luckily, python comes with an inbuilt library  called logging, which is useful for logging your program’s execution to a file.
 Let's set up logging in our Code.
 
@@ -637,10 +637,10 @@ if __name__ == "__main__":
     app.run()
 
 ```
-Although there are various ways you can handle exceptions in your Flask Application, it is worth noting that the APIException provided by Flask gives a fuller content to the response and  appropriate rendering. This is an important aspect because you dont want to leak information to the outside world because of improperly handles exceptions.
+Although there are various ways you can handle exceptions in your Flask Application, it is worth noting that the ``APIException`` class provided by Flask gives a fuller content to the response and  appropriate rendering. This is an important aspect because you don't want to leak information to the outside world because of improperly handles exceptions.
 
 
-For example, if your API relies on a third-party service that may sometimes be unreachable, you might want to implement an exception for the "503 Service Unavailable" HTTP response code.This is to prevent leaking the  location of the service you’re talking to random people.
+For example, if your API relies on a third-party service that may sometimes be unreachable, you might want to implement an exception for the "503 Service Unavailable" HTTP response code.This is to prevent leaking the  location of the service you’re talking to some random people.
 
 ```sh
 
@@ -655,4 +655,4 @@ class ServiceUnavailable(APIException):
 
 ## CONCLUSION
 
-I hope this tutorial has helped you understand exception handling in Flask. Properly handling exceptions is very  very helpful especially i production because a user may abandon your app if errors are not properly handled.. If you have any questions related to exceptions, please let me know in the comments.
+I hope this tutorial has helped you understand exception handling in Flask. Properly handling exceptions is very helpful especially in production because a user may abandon your app if errors are not properly handled. If you have any questions related to exceptions, please let me know in the comments.
