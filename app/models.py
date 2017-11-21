@@ -16,3 +16,11 @@ class Task(db.Model):
 
     def __repr__(self):
         return f'<Task {self.task_name}>'
+
+    def to_json(self):
+        return {
+            'id': self.id,
+            'task_name': self.task_name,
+            'date_created': self.date_created,
+            'date_modified': self.date_modified
+        }
