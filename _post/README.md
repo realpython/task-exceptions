@@ -331,11 +331,10 @@ curl -H "Content-type: application/json" -X dELETE http://127.0.0.1:5000/tasks/3
 Now, try to do a `POST` request with no data. You should see a `Bad Request` error, which you do not want your end users to see and is exactly why want to handle exceptions in your code.
 
 ## Handling Exceptions
-Sometimes, we might need to have our own custom exceptions as opposed to having  the built-in abort() function. This is essential to inform the user what went wrong in a more descriptive manner.
+Sometimes, we might need to have our own custom exceptions.This is essential to inform the user what went wrong in a more descriptive manner.
 The exception will include a status_code and a descriptive message.
 
 
-Let's write an exception if no data is passed in to a `POST` request.
 
 Update *errors.py* like so:
 
@@ -451,7 +450,9 @@ What if we input an `id` that doesn't exist - i.e., [http://localhost:5000/tasks
 
 ```
 AttributeError: 'NoneType' object has no attribute 'id'
+
 ```
+
 
 We need to take care of this error by raising a `NotFound` exception when a task does not exist. Luckily, we don't need to create a custom exception because the [NotFound](http://www.flaskapi.org/api-guide/exceptions/) is built in to Flask API.
 
@@ -551,6 +552,7 @@ The requested URL was not found on the server. If you entered the URL manually p
 ```
 We need to take care of this error by having a custom page.
 Create a templates folder in the ```app ``` directory and add an html file with the following contents.
+
 ```sh
 #app/templates/404.html
 {% block title %}Page Not Found{% endblock %}
@@ -569,6 +571,58 @@ def page_not_found(e):
     return render_template('404.html'), 404
 
 ```
+## HTTPException
+
+
+Flask API  also has has [HTTPException](http://werkzeug.pocoo.org/docs/0.12/exceptions/#custom-errors) class which we can inherit to create an Exception. Let's create an HTTPexception if a task does not exist:
+
+Edit ``errors.py`` to include the exception.
+
+```sh
+
+class PageNotFound(HTTPException):
+    code = 404
+    description = 'We couldn\'t find the page you requested'
+
+```
+
+Now include the exception in the ``manage_tasks`` view:
+
+```python
+@app.route('/tasks/<int:id>', methods=['GET', 'DELETE'])
+def manage_tasks(id):
+    task = Task.query.filter_by(id=id).first()
+    if not task:
+        raise PageNotFound
+
+    if request.method == 'GET':...
+    
+    elif request.method == 'DELETE':...
+        
+
+```
+
+### Aborting
+Using the abort() function is simplest way to handle exceptions in Flask. This type works by just raising an exception by the error code without importing the exception.
+
+Let's write an abort() exception if a task does not exist.
+
+Update the view:
+
+```python
+@app.route('/tasks/<int:id>', methods=['GET', 'DELETE'])
+def manage_tasks(id):
+    task = Task.query.filter_by(id=id).first()
+    if not task:
+        abort(404, "We couldn't find the page you requested")
+
+    if request.method == 'GET':...
+    
+    elif request.method == 'DELETE':...
+        
+
+```
+
 ##LOGGING
 Logging is important so as to  really understand what is happening during executions of the program. Luckily, python comes with an inbuilt library  called logging, which is useful for logging your program’s execution to a file.
 Let's set up logging in our Code.
@@ -583,7 +637,22 @@ if __name__ == "__main__":
     app.run()
 
 ```
+Although there are various ways you can handle exceptions in your Flask Application, it is worth noting that the APIException provided by Flask gives a fuller content to the response and  appropriate rendering. This is an important aspect because you dont want to leak information to the outside world because of improperly handles exceptions.
 
 
-##CONCLUSION
+For example, if your API relies on a third-party service that may sometimes be unreachable, you might want to implement an exception for the "503 Service Unavailable" HTTP response code.This is to prevent leaking the  location of the service you’re talking to random people.
+
+```sh
+
+from flask.ext.api.exceptions import APIException
+
+class ServiceUnavailable(APIException):
+    status_code = 503
+    detail = 'Service temporarily unavailable, try again later.'
+
+```
+
+
+## CONCLUSION
+
 I hope this tutorial has helped you understand exception handling in Flask. Properly handling exceptions is very  very helpful especially i production because a user may abandon your app if errors are not properly handled.. If you have any questions related to exceptions, please let me know in the comments.
